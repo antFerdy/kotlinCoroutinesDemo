@@ -62,11 +62,14 @@ fun asyncDemo() = runBlocking {
 fun runBlockingBuilderDemo() {
 
     thread {
+
         println("Thread started, name of thread: ${Thread.currentThread().name}")
+        
         runBlocking {
             println("Coroutine executes in ${Thread.currentThread().name}")
             println("Thread was blocked by coroutine")
         }
+        
         println("Thread ended")
     }
 
