@@ -1,9 +1,12 @@
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.suspendCancellableCoroutine
+import java.lang.RuntimeException
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 fun main () = runBlocking {
@@ -16,7 +19,11 @@ fun main () = runBlocking {
 
 //    suspendAndResumeOnAnotherThreadWithScheduler()
 
-    suspendAndReturnToContinue()
+//    suspendAndReturnToContinue()
+
+//    resumeWithValue()
+
+    resumeWithException()
 }
 
 suspend fun justSuspendWithoutResume() {
@@ -99,3 +106,66 @@ suspend fun suspendAndReturnToContinue() {
 
     println("After. Returned val: $returnedInt")
 }
+
+
+suspend fun resumeWithValue() {
+
+    println("Before")
+
+    val data = requestDataFromNetwork()
+
+    println("After network call data: $data")
+}
+
+suspend fun requestDataFromNetwork(): String {
+
+    return suspendCoroutine { continuation ->
+        fakeNetworkCall { data ->
+            println("Returning from network: $data")
+            continuation.resume(data)
+        }
+    }
+}
+
+fun fakeNetworkCall(callback: (String) -> Unit): Unit {
+    Thread.sleep(1000L)
+    return callback("Data")
+}
+
+
+suspend fun resumeWithException() {
+
+    println("Before")
+
+    val data = try {
+        requestDataFromNetworkWithEx()
+    } catch (e: Exception) {
+        println(e.message)
+        "Empty data"
+    }
+    println("After: $data")
+}
+
+suspend fun requestDataFromNetworkWithEx(): String {
+
+    return suspendCancellableCoroutine<String> { cancellableContinuation ->
+
+        fakeNetworkCallWithEx { resp ->
+            if (resp.isSuccessful) {
+                cancellableContinuation.resume(resp.data)
+            } else {
+                cancellableContinuation.resumeWithException(RuntimeException("Exception while resume"))
+            }
+        }
+    }
+}
+
+fun fakeNetworkCallWithEx(callback: (Response) -> Unit): Unit {
+    Thread.sleep(1000L)
+    return callback(Response(false))
+}
+
+data class Response(
+    val isSuccessful: Boolean,
+    val data: String = ""
+)
